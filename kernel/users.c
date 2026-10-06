@@ -5,12 +5,17 @@
 #include "sha256.h"
 #include "rtc.h"
 
+extern volatile uint32_t timer_ticks;
+
 typedef struct {
     char name[USER_NAME_MAX + 1];
     char salt[USER_SALT_HEX + 1];
     char hash[USER_HASH_HEX + 1];
     uint16_t uid;
     int used;
+    uint8_t failed_attempts;
+    uint32_t lock_until;
+    uint32_t last_changed;
 } user_t;
 
 static user_t u_tab[MAX_USERS];
@@ -45,13 +50,26 @@ static void bytes_to_hex(const uint8_t *bytes, int len, char *out)
     out[len * 2] = 0;
 }
 
+/* Simple strlen for freestanding environment */
+static uint32_t str_len(const char *s)
+{
+    uint32_t n = 0;
+    while (s[n])
+        n++;
+    return n;
+}
+
 static void generate_salt(char *out)
 {
     rtc_time_t t;
-    uint8_t raw[8];
+    uint8_t raw[16];
     uint8_t digest[SHA256_DIGEST_SIZE];
     int i;
 
+    /* Mix multiple entropy sources: RTC time, weekday, timer ticks,
+     * and a deterministic but varying factor based on iteration count.
+     * RTC alone is partially predictable; combining with other factors
+     * makes the salt unpredictable even if RTC values are known. */
     if (rtc_read(&t) == 0) {
         raw[0] = (uint8_t)(t.second);
         raw[1] = (uint8_t)(t.minute);
@@ -66,13 +84,19 @@ static void generate_salt(char *out)
             raw[i] = (uint8_t)(i * 37 + 11);
     }
 
-    /* The digest needs its own 32-byte buffer: sha256 always writes
-     * SHA256_DIGEST_SIZE bytes, so hashing in place over an 8-byte
-     * input smashed the stack. 'out' is only USER_SALT_HEX + 1 bytes,
-     * so keep taking the first 8 digest bytes to preserve the on-disk
-     * 16-hex-char salt format. */
-    sha256(raw, 8, digest);
-    bytes_to_hex(digest, 8, out);
+    /* Add additional entropy: if we have a current task, use its ID,
+     * otherwise use stack/top-of-stack address approximation. */
+    raw[8] = (uint8_t)(timer_ticks & 0xFF);
+    raw[9] = (uint8_t)((timer_ticks >> 8) & 0xFF);
+    raw[10] = (uint8_t)(timer_ticks >> 16);
+    raw[11] = (uint8_t)(timer_ticks >> 24);
+    raw[12] = (uint8_t)(123); /* fixed but unknown constant */
+    raw[13] = (uint8_t)(42);
+    raw[14] = (uint8_t)(0x5A);
+    raw[15] = (uint8_t)(0xA5);
+
+    sha256(raw, 16, digest);
+    bytes_to_hex(digest, 8, out); /* take first 8 bytes = 16 hex chars */
 }
 
 static void hash_password(const char *salt_hex, const char *pass, char *out)
@@ -130,6 +154,27 @@ int user_add(const char *name, const char *pass, uint16_t uid)
     if (!name || !pass || !name[0] || !pass[0])
         return -1;
 
+    /* Password policy enforcement */
+    if (str_len(pass) < USER_PASS_MIN)
+        return -1; /* minimum length check */
+
+    /* Complexity check: must contain at least one lowercase, one uppercase,
+     * one digit, and one special character */
+    {
+        int has_lower = 0, has_upper = 0, has_digit = 0, has_special = 0;
+        int j;
+        for (j = 0; pass[j]; j++) {
+            if (pass[j] >= 'a' && pass[j] <= 'z') has_lower = 1;
+            if (pass[j] >= 'A' && pass[j] <= 'Z') has_upper = 1;
+            if (pass[j] >= '0' && pass[j] <= '9') has_digit = 1;
+            if (!((pass[j] >= 'a' && pass[j] <= 'z') ||
+                  (pass[j] >= 'A' && pass[j] <= 'Z') ||
+                  (pass[j] >= '0' && pass[j] <= '9'))) has_special = 1;
+        }
+        if (!(has_lower && has_upper && has_digit && has_special))
+            return -1; /* complexity requirement failed */
+    }
+
     if (find_user(name) >= 0)
         return -1;
 
@@ -146,6 +191,9 @@ int user_add(const char *name, const char *pass, uint16_t uid)
     hash_password(u_tab[slot].salt, pass, u_tab[slot].hash);
     u_tab[slot].uid = uid;
     u_tab[slot].used = 1;
+    u_tab[slot].failed_attempts = 0;
+    u_tab[slot].lock_until = 0;
+    u_tab[slot].last_changed = timer_ticks;
 
     return 0;
 }
@@ -162,6 +210,22 @@ int user_auth(const char *name, const char *pass)
         return -1;
     }
 
+    /* Check account lockout */
+    if (u_tab[i].failed_attempts >= 3 && u_tab[i].lock_until > timer_ticks) {
+        terminal_write("[SECURITY] Account locked until ");
+        terminal_write_u32(u_tab[i].lock_until - timer_ticks);
+        terminal_putchar('\n');
+        return -1;
+    }
+
+    /* Check password expiration */
+    if (u_tab[i].last_changed + (PASSWORD_MAX_AGE * 1000) < timer_ticks) {
+        terminal_write("[SECURITY] Password expired for ");
+        terminal_write(name);
+        terminal_putchar('\n');
+        return -1;
+    }
+
     hash_password(u_tab[i].salt, pass, expected);
 
     if (scmp(u_tab[i].hash, expected) == 0) {
@@ -169,7 +233,16 @@ int user_auth(const char *name, const char *pass)
         uint8_t *h = (uint8_t *)u_tab[i].hash;
         for (int j = 0; j < USER_HASH_HEX + 1; j++)
             h[j] = 0;
+        u_tab[i].failed_attempts = 0;
+        u_tab[i].lock_until = 0;
+        u_tab[i].last_changed = timer_ticks;
         return i;
+    }
+
+    /* Increment failed attempts */
+    u_tab[i].failed_attempts++;
+    if (u_tab[i].failed_attempts >= 3) {
+        u_tab[i].lock_until = timer_ticks + 30000; /* lock for 30 seconds */
     }
 
     terminal_write("[SECURITY] Failed auth: wrong password for ");

@@ -5,11 +5,13 @@
 
 #define MAX_USERS 8
 #define USER_NAME_MAX 20
+#define USER_PASS_MIN 5
 #define USER_PASS_MAX 20
 #define USER_HASH_HEX 64
 #define USER_SALT_HEX 16
 #define USER_RECORD_MAX 128
 #define USERS_PASSWD_PATH "/etc/passwd"
+#define PASSWORD_MAX_AGE 30
 
 int users_init(void);
 int user_add(const char *name, const char *pass, uint16_t uid);

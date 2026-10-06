@@ -1,0 +1,100 @@
+[e][c]M[INFO] Lumen kernel online!
+[INFO] VGA text driver: OK
+[INFO] Protected mode: 32-bit
+SELFTEST GDT PASS
+SELFTEST TSS PASS
+SELFTEST IDT PASS
+[INFO] Frame allocator initialized: OK
+[INFO] Frame allocator test: PASS
+SELFTEST FRAME PASS
+[INFO] Paging structures: OK
+[INFO] Paging identity map: OK
+[INFO] Paging: loading CR3...
+[INFO] Paging enabled: YES
+[INFO] Paging dynamic memory test: PASS
+SELFTEST PAGING PASS
+[INFO] IDT initialized: OK
+[INFO] PIC initialized: OK
+[INFO] PIT initialized: 100 Hz
+[INFO] Keyboard initialized: OK
+[INFO] Line editor initialized: OK
+Lumen> [INFO] Task manager initialized: OK
+SELFTEST TASK PASS
+[INFO] Scheduler initialized: OK
+SELFTEST SCHEDULER PASS
+SELFTEST SYSCALL PASS
+[INFO] Memory allocator: OK
+[INFO] ATA: using PIO (DMA disabled)
+[INFO] ATA: primary master drive: OK
+[INFO]   model: 
+QEMUHARDDISK
+[INFO]   serial: 
+QM00001
+[INFO]   capacity: 
+4 MiB, 8192 sectors
+[INFO] FS: LumenFS v2 mounted
+  capacity: 4 MiB, 4087 KiB free
+[INFO] ATA self-test: primary 
+4 MiB, model 'QEMUHARDDISK'
+SELFTEST ATA PASS
+[INFO] RTC self-test: 
+2026-10-06 12:13:44 (24h), century ok
+SELFTEST RTC PASS
+[INFO] FS self-test: PASS
+SELFTEST FS PASS
+[INFO] Syscall GETPID: task 1
+SELFTEST RING3IO PASS
+[ERROR] CPU EXCEPTION RECEIVED
+[ERROR] Vector: 0x0000000E
+[ERROR] Error code: 0x00000004
+[ERROR] EIP: 0x00000000
+[ERROR] EBP: 0x00000000
+[ERROR] ESP: 0x01002000
+[ERROR] Fault address: 0x40000000
+[ERROR] Exception 14: Page fault
+[ERROR] Ring 3 task faulted, terminating task: 0x00000001
+[ERROR] CPU EXCEPTION RECEIVED
+[ERROR] Vector: 0x00000006
+[ERROR] Error code: 0x00000000
+[ERROR] EIP: 0x00000000
+[ERROR] EBP: 0x00000000
+[ERROR] ESP: 0x01002000
+[ERROR] Exception 6: Invalid opcode
+[ERROR] Ring 3 task faulted, terminating task: 0x00000001
+[INFO] Syscall GETPID: task 1
+SELFTEST RING3FLT PASS
+SELFTEST RING3FRK PASS
+SELFTEST RING3EXE PASS
+[INFO] Syscall GETPID: task 1
+[ERROR] Unknown system call
+[INFO] Syscall GETPID: task 1
+SELFTEST RING3SYC PASS
+SELFTEST RING3ELF PASS
+[INFO] Heap page-backed allocator test: PASS
+SELFTEST HEAP PASS
+SELFTEST GUI PASS
+SELFTEST SETTINGS PASS
+[SECURITY] First boot: creating root user
+[ERROR] USERS self-test: user_add failed
+[SECURITY] Failed auth: unknown user selftest
+[ERROR] USERS self-test: correct password rejected
+[SECURITY] Failed auth: unknown user selftest
+[SECURITY] Failed auth: unknown user nosuchuser
+[ERROR] USERS self-test: users_load failed
+[SECURITY] Failed auth: unknown user selftest
+[ERROR] USERS self-test: user did not survive a save/load round trip
+SELFTEST USERS FAIL
+SELFTEST NET PASS
+SELFTEST PKG PASS
+SELFTEST PROC PASS
+SELFTEST KLOG PASS
+SELFTEST CRON PASS
+SELFTEST GFX PASS
+[WARN] NIC: no ARP reply for 10.0.2.2, skipping wire test
+SELFTEST NIC PASS
+[INFO] Dynamic buffer allocation: WORKING
+[INFO] Heap allocation test passed
+1264 bytes
+[INFO] Enabling timer + keyboard interrupts...
+SELFTEST-SUMMARY pass=27 fail=1
+[INFO] Boot self-tests complete
