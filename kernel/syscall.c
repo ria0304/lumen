@@ -404,8 +404,16 @@ void syscall_handler(uint32_t *frame)
         }
 
         case SYS_SOCKET:
-            frame[7] = 0; /* loopback fd 0 */
+        {
+            if (caller_is_user) {
+                terminal_write("[SECURITY] User attempted socket() - denied\n");
+                frame[7] = 0xFFFFFFFFU;
+                break;
+            }
+            /* Kernel-only: create loopback socket fd 0 */
+            frame[7] = 0;
             break;
+        }
 
         case SYS_SEND:
         {
@@ -413,10 +421,20 @@ void syscall_handler(uint32_t *frame)
             const void *buf = (const void *)ubuf;
             uint32_t len = frame[5];
 
-            if (caller_is_user &&
-                uaccess_check(caller_dir, ubuf, len, 0) != 0) {
-                frame[7] = 0xFFFFFFFFU;
-                break;
+            if (caller_is_user) {
+                if (uaccess_check(caller_dir, ubuf, len, 0) != 0) {
+                    frame[7] = 0xFFFFFFFFU;
+                    break;
+                }
+                terminal_write("[SECURITY] User send: buf=");
+                terminal_write_u32(ubuf);
+                terminal_write_u32(len);
+                terminal_putchar('\n');
+            } else {
+                terminal_write("[SECURITY] Kernel send: ");
+                terminal_write_u32(ubuf);
+                terminal_write_u32(len);
+                terminal_putchar('\n');
             }
 
             int n = buf ? net_send(buf, len) : -1;
@@ -430,10 +448,20 @@ void syscall_handler(uint32_t *frame)
             void *buf = (void *)ubuf;
             uint32_t len = frame[5];
 
-            if (caller_is_user &&
-                uaccess_check(caller_dir, ubuf, len, 1) != 0) {
-                frame[7] = 0xFFFFFFFFU;
-                break;
+            if (caller_is_user) {
+                if (uaccess_check(caller_dir, ubuf, len, 1) != 0) {
+                    frame[7] = 0xFFFFFFFFU;
+                    break;
+                }
+                terminal_write("[SECURITY] User recv: buf=");
+                terminal_write_u32(ubuf);
+                terminal_write_u32(len);
+                terminal_putchar('\n');
+            } else {
+                terminal_write("[SECURITY] Kernel recv: ");
+                terminal_write_u32(ubuf);
+                terminal_write_u32(len);
+                terminal_putchar('\n');
             }
 
             int n = buf ? net_recv(buf, len) : -1;
