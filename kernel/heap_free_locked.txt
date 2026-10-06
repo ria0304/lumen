@@ -1,0 +1,42 @@
+static void heap_free_locked(void *pointer)
+{
+    if (!pointer)
+        return;
+
+    uint32_t header =
+        align_up(sizeof(heap_block_t));
+
+    uint32_t address =
+        (uint32_t)pointer;
+
+    if (address <
+        HEAP_START + header)
+        return;
+
+    if (address >= HEAP_END)
+        return;
+
+    heap_block_t *block =
+        (heap_block_t *)
+        ((uint8_t *)pointer -
+         header);
+
+    if (block->magic !=
+        HEAP_MAGIC)
+        return;
+
+    if (block->free)
+        return;
+
+    block->free =
+        BLOCK_FREE;
+
+    if (heap_used_bytes >=
+        block->size)
+        heap_used_bytes -=
+            block->size;
+    else
+        heap_used_bytes = 0;
+
+    coalesce(block);
+}

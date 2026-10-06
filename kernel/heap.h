@@ -7,6 +7,13 @@
 #define HEAP_END          0x00800000U
 #define HEAP_PAGE_SIZE    4096U
 
+#define HEAP_ALIGN 8U
+#define HEAP_MAGIC 0x48454150U
+#define HEAP_CANARY 0xDEADBEEFU
+
+#define BLOCK_FREE 1U
+#define BLOCK_USED 0U
+
 void heap_init(void);
 void *kmalloc(uint32_t size);
 void kfree(void *pointer);
