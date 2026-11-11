@@ -1,0 +1,3 @@
+28ae61d3622db427a8329eada7f35278c90b4f2664bffeb03ecbfc7aeba81a01  build-test/evidence/lumen-source-28-pass.tar.gz
+cc55e06fc06751feb095a6ed0a66eb613c4eda85052223f33c6c680b98815039  build-test/evidence/boot.log.28-pass
+61ac4895d01b1ef9e2f7952cf7d5b8ae7c6297fc22fc1c47e1e98448adff4c91  build-test/evidence/boot.log.reproduced
